@@ -598,8 +598,11 @@ def printParameters(cself, dest=sys.stdout):
         corners, reprojs, rerrs = getReprojectionErrors(cself, cidx)        
         if len(rerrs)>0:
             me, se = getReprojectionErrorStatistics(rerrs)
-            print >> dest, "\t reprojection error: [%f, %f] +- [%f, %f]" % (me[0], me[1], se[0], se[1])
-        print >> dest
+            try:
+              print >> dest, "\t reprojection error: [%f, %f] +- [%f, %f]" % (me[0], me[1], se[0], se[1])
+            except:
+              print >> dest, "\t Failed printing the reprojection error."
+            print >> dest
 
     #print baselines
     for bidx, baseline in enumerate(cself.baselines):
@@ -656,11 +659,17 @@ def saveChainParametersYaml(cself, resultFile, graph):
     cameraModels = {acvb.DistortedPinhole: 'pinhole',
                     acvb.EquidistantPinhole: 'pinhole',
                     acvb.FovPinhole: 'pinhole',
-                    acvb.DistortedOmni: 'omni'}
+                    acvb.Omni: 'omni',
+                    acvb.DistortedOmni: 'omni',
+                    acvb.ExtendedUnified: 'eucm',
+                    acvb.DoubleSphere: 'ds'}
     distortionModels = {acvb.DistortedPinhole: 'radtan',
                         acvb.EquidistantPinhole: 'equidistant',
                         acvb.FovPinhole: 'fov',
-                        acvb.DistortedOmni: 'radtan'}
+                        acvb.Omni: 'none',
+                        acvb.DistortedOmni: 'radtan',
+                        acvb.ExtendedUnified: 'none',
+                        acvb.DoubleSphere: 'none'}
 
     chain = cr.CameraChainParameters(resultFile, createYaml=True)
     for cam_id, cam in enumerate(cself.cameras):
@@ -677,6 +686,12 @@ def saveChainParametersYaml(cself, resultFile, graph):
             camParams.setIntrinsics(cameraModel, [P.xi(), P.fu(), P.fv(), P.cu(), P.cv()] )
         elif cameraModel == 'pinhole':
             camParams.setIntrinsics(cameraModel, [P.fu(), P.fv(), P.cu(), P.cv()] )
+        elif cameraModel == 'eucm':
+            camParams.setIntrinsics(cameraModel, [P.alpha(), P.beta(), P.fu(), P.fv(), P.cu(), P.cv()] )
+        elif cameraModel == 'ds':
+            camParams.setIntrinsics(cameraModel, [P.xi(), P.alpha(), P.fu(), P.fv(), P.cu(), P.cv()] )
+        else:
+            raise RuntimeError("Invalid camera model {}.".format(cameraModel))
         camParams.setResolution( [P.ru(), P.rv()] )
         dist_coeffs = P.distortion().getParameters().flatten(1)
         camParams.setDistortion( distortionModel, dist_coeffs)
